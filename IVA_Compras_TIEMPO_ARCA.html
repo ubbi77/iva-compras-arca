@@ -121,6 +121,31 @@ dialog ul{margin:6px 0;padding-left:18px;max-height:180px;overflow:auto}
 .hint{color:var(--muted);font-size:12px}
 .saved{color:var(--muted);font-size:12px}
 @media (max-width:700px){.tools input[type=search]{width:100%}}
+/* Resumen para imprimir: oculto en pantalla, es lo único que sale en papel */
+#reporte{display:none}
+.rep{font:11px/1.4 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif;color:#111;background:#fff}
+.rep h1{font-size:18px;margin:0 0 2px}
+.rep .meta{color:#555;margin-bottom:10px}
+.rep h2{font-size:13px;margin:14px 0 5px;padding-bottom:3px;border-bottom:1.5px solid #1f5fbf;color:#1f5fbf}
+.rep .kp{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rep .kp div{border:1px solid #ccd3dd;border-radius:5px;padding:5px 8px}
+.rep .kp b{display:block;font-size:13.5px;font-variant-numeric:tabular-nums}
+.rep .kp span{color:#555;font-size:9.5px;text-transform:uppercase;letter-spacing:.03em}
+.rep table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.rep th,.rep td{position:static;border-bottom:1px solid #dde2e8;padding:3px 5px;text-align:left;font-size:10px;background:none;color:#111;white-space:normal;cursor:default}
+.rep th{background:#eef3fb;font-weight:600}
+.rep td.n,.rep th.n{text-align:right;white-space:nowrap}
+.rep tr.tot td{font-weight:700;border-top:1.5px solid #888}
+.rep .e{color:#b42318}.rep .w{color:#a15c00}
+.rep .pie{margin-top:12px;color:#777;font-size:9px}
+@page{size:A4;margin:12mm}
+@media print{
+  html,body{height:auto;background:#fff;display:block}
+  body>*:not(#reporte){display:none!important}
+  #reporte{display:block}
+  .rep tr{break-inside:avoid}
+  .rep h2{break-after:avoid}
+}
 </style>
 </head>
 <body>
@@ -135,6 +160,7 @@ dialog ul{margin:6px 0;padding-left:18px;max-height:180px;overflow:auto}
     <button class="btn" id="bDeshacer" disabled title="Ctrl+Z">Deshacer</button>
     <button class="btn" id="bGuardar" title="Descarga un archivo con todo el trabajo para seguir después">Guardar trabajo</button>
     <button class="btn" id="bCargar">Abrir trabajo</button>
+    <button class="btn" id="bImprimir" title="Resumen del período para imprimir o guardar como PDF">Imprimir resumen</button>
     <button class="btn" id="bCsv" title="Planilla para abrir en Excel">Exportar planilla</button>
     <button class="btn pri" id="bGenerar">Generar TXT ARCA</button>
   </div>
@@ -179,6 +205,7 @@ dialog ul{margin:6px 0;padding-left:18px;max-height:180px;overflow:auto}
 <dialog id="dlg"></dialog>
 <dialog id="dlg2"></dialog>
 <div class="toast" id="toast"></div>
+<div id="reporte"></div>
 
 <script>
 /* Núcleo: lectura del Excel de TIEMPO, validaciones y generación de los TXT de ARCA
@@ -944,6 +971,74 @@ function dialogoGenerar(){
   dlg.showModal();
 }
 
+// ---------- Resumen para imprimir ----------
+function htmlResumen(){
+  const NC = ['003','008','013','021','053'];
+  const sg = (f) => NC.includes(f.tipo) ? -1 : 1;
+  const inc = C.ordenar(estado.filas.filter(f=>f.incluir));
+  const ss = (fn) => C.r2(inc.reduce((a,f)=>a+sg(f)*fn(f),0));
+  const nErr = estado.filas.filter(f=>nivel(f)==='err').length, nWarn = estado.filas.filter(f=>nivel(f)==='warn').length;
+  const m = (v) => fmt.format(v||0);
+  const per = estado.periodo ? estado.periodo.split('-').reverse().join('/') : 'sin período';
+  const porTipo = {};
+  inc.forEach(f => { const t = porTipo[f.tipo] = porTipo[f.tipo] || {n:0,neto:0,iva:0,total:0}; t.n++; t.neto+=C.netoGravado(f); t.iva+=C.creditoFiscal(f); t.total+=f.total; });
+  const porAli = {};
+  inc.forEach(f => C.alicuotasDe(f).forEach(a => { const t = porAli[a.cod] = porAli[a.cod]||{neto:0,iva:0}; t.neto+=sg(f)*a.neto; t.iva+=sg(f)*a.iva; }));
+  const nomAli = {'0003':'0%','0004':'10,5%','0005':'21%','0006':'27%','0008':'5%','0009':'2,5%'};
+  const obs = estado.filas.filter(f => ['err','warn','off'].includes(nivel(f)));
+  const est = {ok:'OK', warn:'Aviso', err:'Error', off:'Excluido'};
+  return `<div class="rep">
+  <h1>Resumen IVA Compras · período ${esc(per)}</h1>
+  <div class="meta">${estado.archivo?`Archivo: ${esc(estado.archivo)} · `:''}Impreso el ${new Date().toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})}</div>
+  <h2>Totales (facturas menos notas de crédito)</h2>
+  <div class="kp">
+    <div><span>Comprobantes</span><b>${inc.length}</b></div>
+    <div><span>Neto gravado</span><b>$ ${m(ss(C.netoGravado))}</b></div>
+    <div><span>Crédito fiscal</span><b>$ ${m(ss(C.creditoFiscal))}</b></div>
+    <div><span>Total comprado</span><b>$ ${m(ss(f=>f.total))}</b></div>
+    <div><span>Percepción IVA</span><b>$ ${m(ss(f=>f.perIVA))}</b></div>
+    <div><span>Percepción IIBB</span><b>$ ${m(ss(f=>f.perIIBB))}</b></div>
+    <div><span>No gravado + exento</span><b>$ ${m(ss(f=>f.nograv+f.exento))}</b></div>
+    <div><span>Errores / avisos / excluidos</span><b>${nErr} / ${nWarn} / ${estado.filas.length-inc.length}</b></div>
+  </div>
+  <h2>Por tipo de comprobante</h2>
+  <table><tr><th>Tipo</th><th class="n">Cant.</th><th class="n">Neto gravado</th><th class="n">Crédito fiscal</th><th class="n">Total</th></tr>
+  ${Object.keys(porTipo).sort().map(t=>`<tr><td>${t} · ${esc(C.NOMBRES_TIPO[t]||'')}</td><td class="n">${porTipo[t].n}</td><td class="n">${m(porTipo[t].neto)}</td><td class="n">${m(porTipo[t].iva)}</td><td class="n">${m(porTipo[t].total)}</td></tr>`).join('')}
+  </table>
+  <h2>Por alícuota de IVA (facturas menos notas de crédito)</h2>
+  <table><tr><th>Alícuota</th><th class="n">Neto</th><th class="n">IVA</th></tr>
+  ${Object.keys(porAli).sort().map(k=>`<tr><td>${nomAli[k]||k} (${k})</td><td class="n">${m(porAli[k].neto)}</td><td class="n">${m(porAli[k].iva)}</td></tr>`).join('')}
+  <tr class="tot"><td>Total</td><td class="n">${m(Object.values(porAli).reduce((a,x)=>a+x.neto,0))}</td><td class="n">${m(Object.values(porAli).reduce((a,x)=>a+x.iva,0))}</td></tr>
+  </table>
+  ${obs.length?`<h2>Para revisar (${obs.length})</h2>
+  <table><tr><th>Estado</th><th>Comprobante</th><th>Razón social</th><th>Detalle</th></tr>
+  ${obs.map(f=>{const v=val(f), n=nivel(f); const d=[...(f.incluir?[]:['Excluido del TXT']),...v.err,...v.av,f.nota||''].filter(Boolean).join(' · ');
+    return `<tr><td class="${n==='err'?'e':n==='warn'?'w':''}">${est[n]}</td><td class="n" style="text-align:left">${f.tipo} ${String(f.pv).padStart(5,'0')}-${String(f.nro).padStart(8,'0')}</td><td>${esc(f.nombre)}</td><td>${esc(d)}</td></tr>`;}).join('')}
+  </table>`:''}
+  <h2>Detalle de comprobantes incluidos (${inc.length})</h2>
+  <table><tr><th>Fecha</th><th>Tipo</th><th>Número</th><th>CUIT</th><th>Razón social</th><th class="n">Neto grav.</th><th class="n">IVA</th><th class="n">Percep.</th><th class="n">Total</th></tr>
+  ${inc.map(f=>`<tr><td>${f.fecha.split('-').reverse().join('/')}</td><td>${f.tipo}</td><td>${String(f.pv).padStart(5,'0')}-${String(f.nro).padStart(8,'0')}</td><td>${esc(f.cuit)}</td><td>${esc(f.nombre)}</td><td class="n">${m(C.netoGravado(f)+(f.netoBC||0))}</td><td class="n">${m(C.creditoFiscal(f))}</td><td class="n">${m(f.perIVA+f.perIIBB+f.perNac+f.perMun)}</td><td class="n">${m(f.total)}</td></tr>`).join('')}
+  </table>
+  <div class="pie">Generado con IVA Compras · TIEMPO → ARCA. Las notas de crédito figuran en positivo en el detalle y restan en los totales.</div>
+  </div>`;
+}
+function imprimir(){
+  if (!estado.filas.length){ toast('No hay datos para imprimir'); return; }
+  $('#reporte').innerHTML = htmlResumen();
+  if (window.claude && window.claude.use){
+    // Dentro de claude.ai la ventana de impresión puede estar bloqueada: se ofrece también descargarlo
+    preguntar('Resumen listo.\nSi no se abre la ventana de impresión, descargalo y abrilo: se imprime solo.', [['','Cancelar'],['dl','Descargar para imprimir'],['print','Imprimir']]).then(r => {
+      if (r === 'print') window.print();
+      if (r === 'dl') descargarResumen();
+    });
+  } else window.print();
+}
+function descargarResumen(){
+  const css = [...document.querySelectorAll('style')].map(s=>s.textContent).join('\n').match(/\/\* Resumen para imprimir[\s\S]*$/);
+  const doc = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Resumen IVA Compras ${esc(estado.periodo||'')}</title><style>body{margin:16px;background:#fff}${css?css[0].replace(/#reporte\{display:none\}/,'').replace(/body>\*:not\(#reporte\)\{display:none!important\}/,''):''}</style></head><body>${htmlResumen()}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`;
+  descargar(`resumen_iva_compras_${(estado.periodo||'').replace('-','')}.html`, doc, 'text/html;charset=utf-8');
+}
+
 function exportarCSV(){
   const cols = COLS.filter(c => !c.ro || c.k==='cfc');
   const head = ['Incluir','Estado', ...cols.map(c=>c.t), 'Observaciones'];
@@ -974,6 +1069,7 @@ $('#fTxt').onchange = (e) => { if (e.target.files.length) abrirTXT([...e.target.
 $('#bAgregar').onclick = agregar;
 $('#bDeshacer').onclick = deshacer;
 $('#bGenerar').onclick = dialogoGenerar;
+$('#bImprimir').onclick = imprimir;
 $('#bCsv').onclick = () => estado.filas.length ? exportarCSV() : toast('No hay datos');
 $('#bGuardar').onclick = () => { if (!estado.filas.length) return toast('No hay datos'); descargar(`trabajo_iva_compras_${(estado.periodo||'').replace('-','')}.json`, JSON.stringify(estado), 'application/json'); };
 $('#bCargar').onclick = () => $('#fJson').click();
@@ -987,6 +1083,7 @@ $('#periodo').onchange = (e) => { estado.periodo = e.target.value; guardarLocal(
 ['#q','#fTipo','#fEstado'].forEach(s => $(s).addEventListener('input', () => renderTabla()));
 $('#chkMas').onchange = () => renderTabla();
 $('#cards').addEventListener('click', (e) => { const c = e.target.closest('.card.clk'); if (!c) return; $('#fEstado').value = $('#fEstado').value===c.dataset.f ? '' : c.dataset.f; renderTabla(); });
+window.addEventListener('beforeprint', () => { if (estado.filas.length) $('#reporte').innerHTML = htmlResumen(); });
 document.addEventListener('keydown', (e) => { if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z' && !e.target.matches('input,select')){ e.preventDefault(); deshacer(); } });
 
 // arrastrar y soltar

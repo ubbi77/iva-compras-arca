@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IVA Compras TIEMPO-ARCA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Planilla de trabajo contable: barra de acciones, tarjetas de totales, grilla editable a pantalla completa */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#1d2330; --muted:#636b7a; --line:#dfe3ea; --line2:#edf0f4;
+  --head:#f7f9fb; --hover:#f8fbff; --input:#ffffff; --chg:#fff6cc; --pre:#f5f7fa;
+  --acc:#1f5fbf; --acc-ink:#ffffff; --acc-soft:#e7effc;
+  --g21:#eef4ff; --g105:#eef9f2; --g27:#f7f0fd;
+  --ok:#1a7f4b; --warn:#a15c00; --warn-dot:#e59a12; --warn-bg:#fff3dc; --err:#b42318; --err-bg:#fdecea; --off:#9aa1ad;
+  --toast:#1d2330; --toast-ink:#ffffff; --shadow:rgba(16,24,40,.18); --scrim:rgba(20,25,35,.35);
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --gx: max(16px, env(safe-area-inset-left, 0px)); --gxr: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a1f28; --ink:#e6e9ef; --muted:#9aa3b2; --line:#2c3340; --line2:#232a35;
+  --head:#1f2530; --hover:#1f2633; --input:#141922; --chg:#3a3313; --pre:#141922;
+  --acc:#5b93e8; --acc-ink:#0d1420; --acc-soft:#1d2b44;
+  --g21:#1c2638; --g105:#1a2b23; --g27:#272035;
+  --ok:#4cc38a; --warn:#f0b04a; --warn-dot:#f0b04a; --warn-bg:#3a2c12; --err:#ff8a7a; --err-bg:#3d1c19; --off:#5f6878;
+  --toast:#e6e9ef; --toast-ink:#12161d; --shadow:rgba(0,0,0,.5); --scrim:rgba(0,0,0,.55); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a1f28; --ink:#e6e9ef; --muted:#9aa3b2; --line:#2c3340; --line2:#232a35;
+  --head:#1f2530; --hover:#1f2633; --input:#141922; --chg:#3a3313; --pre:#141922;
+  --acc:#5b93e8; --acc-ink:#0d1420; --acc-soft:#1d2b44;
+  --g21:#1c2638; --g105:#1a2b23; --g27:#272035;
+  --ok:#4cc38a; --warn:#f0b04a; --warn-dot:#f0b04a; --warn-bg:#3a2c12; --err:#ff8a7a; --err-bg:#3d1c19; --off:#5f6878;
+  --toast:#e6e9ef; --toast-ink:#12161d; --shadow:rgba(0,0,0,.5); --scrim:rgba(0,0,0,.55); color-scheme:dark }
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:13px/1.35 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif;display:flex;flex-direction:column}
+button,select,input{font:inherit;color:inherit}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding-block:10px;padding-left:var(--gx);padding-right:var(--gxr);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-.01em}
+header h1 small{font-weight:400;color:var(--muted);margin-left:6px}
+.sp{flex:1}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 11px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted);background:var(--hover)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.sm{padding:3px 8px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:default}
+.grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+label.per{display:flex;gap:6px;align-items:center;color:var(--muted)}
+label.per input{border:1px solid var(--line);border-radius:6px;padding:4px 6px;color:var(--ink)}
+.cards{display:flex;gap:10px;padding-block:12px 4px;padding-left:var(--gx);padding-right:var(--gxr);flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-width:140px}
+.card .k{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.card .v{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.card.warn .v{color:var(--warn)} .card.err .v{color:var(--err)}
+.card.clk{cursor:pointer} .card.clk:hover{border-color:var(--muted)}
+.tools{display:flex;gap:8px;padding-block:8px;padding-left:var(--gx);padding-right:var(--gxr);align-items:center;flex-wrap:wrap}
+.tools input[type=search],.tools select{border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--input)}
+.tools input[type=search]{width:240px}
+.tools .cnt{color:var(--muted)}
+main{flex:1;min-height:0;display:flex;flex-direction:column;padding-block:0 12px;padding-left:var(--gx);padding-right:var(--gxr)}
+.tblwrap{flex:1;min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums;width:max-content}
+th,td{border-bottom:1px solid var(--line2);padding:0;white-space:nowrap}
+th{position:sticky;top:0;background:var(--head);z-index:2;font-weight:600;font-size:11.5px;color:var(--muted);text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+th.num{text-align:right}
+th .ar{color:var(--acc);margin-left:3px}
+th.grp21{background:var(--g21)} th.grp105{background:var(--g105)} th.grp27{background:var(--g27)}
+tfoot td{position:sticky;bottom:0;background:var(--head);font-weight:600;border-top:1px solid var(--line);padding:6px 6px;text-align:right;z-index:2}
+td.c-sel,th.c-sel{position:sticky;left:0;z-index:3;background:inherit}
+th.c-sel{z-index:4;background:var(--head)}
+tfoot td.c-sel{background:var(--head);z-index:5}
+tbody tr{background:var(--panel)}
+tbody tr:hover{background:var(--hover)}
+tbody tr.sel{background:var(--acc-soft)}
+tbody tr.off td:not(.c-sel):not(.c-st){opacity:.45}
+tbody tr.off .c-nom input{text-decoration:line-through}
+td input,td select{border:0;background:transparent;padding:5px 6px;width:100%;outline:none;font-variant-numeric:tabular-nums}
+td input:focus,td select:focus{background:var(--input);box-shadow:inset 0 0 0 2px var(--acc);border-radius:3px}
+td.num input{text-align:right}
+td.chg input,td.chg select{background:var(--chg)}
+.w-f{width:96px}.w-t{width:172px}.w-pv{width:58px}.w-nro{width:92px}.w-cuit{width:108px}.w-nom{width:230px}.w-n{width:108px}.w-s{width:62px}
+td.c-sel{text-align:center;padding:0 6px}
+td.c-st{text-align:center;width:30px;cursor:pointer}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok)}
+.dot.warn{background:var(--warn-dot)}.dot.err{background:var(--err)}.dot.off{background:var(--off)}
+td.dif{padding:0 6px;text-align:right;color:var(--muted)}
+td.dif.bad{color:var(--err);font-weight:600}
+td.act{padding:0 4px}
+td.act button{border:0;background:none;cursor:pointer;color:var(--muted);padding:3px 5px;border-radius:4px}
+td.act button:hover{background:var(--line2);color:var(--ink)}
+td.ro{padding:0 6px;text-align:right;color:var(--ink)}
+.empty{flex:1;display:flex;align-items:center;justify-content:center}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:40px 32px;text-align:center;background:var(--panel);max-width:620px}
+.drop.on{border-color:var(--acc);background:var(--acc-soft)}
+.drop h2{margin:0 0 8px;font-size:18px}
+.drop p{color:var(--muted);margin:6px 0}
+.drop .grp{justify-content:center;margin-top:16px}
+#detalle{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-top:10px;padding:10px 14px;display:none;max-height:38vh;overflow:auto}
+#detalle.on{display:block}
+#detalle h3{margin:0 0 6px;font-size:13px}
+#detalle .msgs div{padding:3px 8px;border-radius:5px;margin:3px 0}
+#detalle .msgs .e{background:var(--err-bg);color:var(--err)}
+#detalle .msgs .w{background:var(--warn-bg);color:var(--warn)}
+#detalle .msgs .i{background:var(--line2);color:var(--ink)}
+#detalle pre{font:11.5px/1.45 var(--mono);background:var(--pre);border:1px solid var(--line2);border-radius:6px;padding:8px;overflow:auto;margin:6px 0 0;white-space:pre}
+#detalle .row2{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+#detalle .row2>div{min-width:260px}
+#detalle table.mini td,#detalle table.mini th{position:static;padding:3px 8px;border-bottom:1px solid var(--line2);font-size:12px;cursor:default}
+.toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);background:var(--toast);color:var(--toast-ink);padding:9px 16px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;max-width:80vw}
+.toast.on{opacity:1}
+dialog{border:1px solid var(--line);border-radius:10px;padding:18px 20px;max-width:640px;width:92vw;box-shadow:0 12px 40px var(--shadow);background:var(--panel);color:var(--ink)}
+dialog::backdrop{background:var(--scrim)}
+dialog p.msg{white-space:pre-line;margin:0 0 4px}
+dialog h2{margin:0 0 10px;font-size:16px}
+dialog table{width:100%;border-collapse:collapse}
+dialog td,dialog th{position:static;padding:4px 6px;border-bottom:1px solid var(--line2);font-size:12.5px;cursor:default;background:none}
+dialog td.n{text-align:right;font-variant-numeric:tabular-nums}
+dialog .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+dialog ul{margin:6px 0;padding-left:18px;max-height:180px;overflow:auto}
+.hint{color:var(--muted);font-size:12px}
+.saved{color:var(--muted);font-size:12px}
+@media (max-width:700px){.tools input[type=search]{width:100%}}
+</style>
+</head>
+<body>
+<header>
+  <h1>IVA Compras <small>TIEMPO → Libro IVA Digital ARCA</small></h1>
+  <label class="per">Período <input type="month" id="periodo"></label>
+  <div class="sp"></div>
+  <div class="grp">
+    <button class="btn" id="bAbrir" title="Excel exportado de TIEMPO (.XLS) o CSV">Abrir Excel TIEMPO</button>
+    <button class="btn" id="bTxt" title="Los dos TXT (comprobantes + alícuotas) para revisar o corregir">Abrir TXT ARCA</button>
+    <button class="btn" id="bAgregar">+ Comprobante</button>
+    <button class="btn" id="bDeshacer" disabled title="Ctrl+Z">Deshacer</button>
+    <button class="btn" id="bGuardar" title="Descarga un archivo con todo el trabajo para seguir después">Guardar trabajo</button>
+    <button class="btn" id="bCargar">Abrir trabajo</button>
+    <button class="btn" id="bCsv" title="Planilla para abrir en Excel">Exportar planilla</button>
+    <button class="btn pri" id="bGenerar">Generar TXT ARCA</button>
+  </div>
+  <input type="file" id="fExcel" accept=".xls,.XLS,.csv,.CSV" hidden>
+  <input type="file" id="fTxt" accept=".txt,.TXT" multiple hidden>
+  <input type="file" id="fJson" accept=".json" hidden>
+</header>
+
+<div class="cards" id="cards"></div>
+<div class="tools" id="tools">
+  <input type="search" id="q" placeholder="Buscar razón social, CUIT o número…">
+  <select id="fTipo"><option value="">Todos los tipos</option></select>
+  <select id="fEstado">
+    <option value="">Todos</option>
+    <option value="prob">Con errores o avisos</option>
+    <option value="err">Solo errores</option>
+    <option value="off">Excluidos</option>
+    <option value="fuera">Fuera del período</option>
+    <option value="mod">Modificados a mano</option>
+  </select>
+  <label class="hint"><input type="checkbox" id="chkMas"> Alícuotas 5% / 2,5% y otros tributos</label>
+  <span class="cnt" id="cnt"></span>
+  <div class="sp"></div>
+  <span class="saved" id="saved"></span>
+  <button class="btn sm" id="bLimpiar">Vaciar todo</button>
+</div>
+
+<main id="main">
+  <div class="empty" id="empty">
+    <div class="drop" id="drop">
+      <h2>Arrastrá acá el Excel de TIEMPO</h2>
+      <p>El archivo de compras que exporta TIEMPO (por ejemplo <b>COMPRAS_TIEMPO_10_26.XLS</b>).</p>
+      <p>También podés arrastrar los dos TXT de ARCA (comprobantes y alícuotas) para revisar o corregir un libro ya generado.</p>
+      <div class="grp"><button class="btn pri" id="bAbrir2">Elegir Excel…</button><button class="btn" id="bTxt2">Elegir TXT…</button></div>
+      <p class="hint" style="margin-top:16px">Todo queda en esta computadora. No se sube nada a internet.</p>
+    </div>
+  </div>
+  <div class="tblwrap" id="wrap" hidden><table id="tbl"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>
+  <div id="detalle"></div>
+</main>
+
+<dialog id="dlg"></dialog>
+<dialog id="dlg2"></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+/*__CORE__*/
+</script>
+<script>
+(function(){
+'use strict';
+const C = window.IvaCore;
+const $ = (s) => document.querySelector(s);
+const LS = 'ivaCompras.trabajo.v1';
+const fmt = new Intl.NumberFormat('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const money = (v) => (v ? fmt.format(v) : '');
+const parseNum = (s) => {
+  s = String(s).trim().replace(/\s|\$/g,'');
+  if (!s) return 0;
+  if (s.includes(',')) s = s.replace(/\./g,'').replace(',', '.');      // 1.234,56
+  else if ((s.match(/\./g)||[]).length > 1) s = s.replace(/\./g,'');     // 1.234.567
+  const n = Number(s); return isNaN(n) ? null : C.r2(n);
+};
+
+let estado = { periodo:'', filas:[], archivo:'' };
+let undo = [];
+let selId = null;
+let orden = { col:null, dir:1 };
+
+// ---------- Columnas ----------
+const COLS = [
+  {k:'fecha', t:'Fecha', w:'w-f', tipo:'fecha'},
+  {k:'tipo', t:'Tipo', w:'w-t', tipo:'tipo'},
+  {k:'pv', t:'P.Vta', w:'w-pv', tipo:'int', num:1},
+  {k:'nro', t:'Número', w:'w-nro', tipo:'int', num:1},
+  {k:'cuit', t:'CUIT', w:'w-cuit', tipo:'cuit'},
+  {k:'nombre', t:'Razón social', w:'w-nom', tipo:'txt', cls:'c-nom'},
+  {k:'neto21', t:'Neto 21%', g:'grp21', m:1},
+  {k:'iva21', t:'IVA 21%', g:'grp21', m:1},
+  {k:'neto105', t:'Neto 10,5%', g:'grp105', m:1},
+  {k:'iva105', t:'IVA 10,5%', g:'grp105', m:1},
+  {k:'neto27', t:'Neto 27%', g:'grp27', m:1},
+  {k:'iva27', t:'IVA 27%', g:'grp27', m:1},
+  {k:'neto5', t:'Neto 5%', m:1, mas:1},
+  {k:'iva5', t:'IVA 5%', m:1, mas:1},
+  {k:'neto25', t:'Neto 2,5%', m:1, mas:1},
+  {k:'iva25', t:'IVA 2,5%', m:1, mas:1},
+  {k:'neto0', t:'Neto 0%', m:1},
+  {k:'netoBC', t:'Importe B/C', m:1, tip:'Neto de facturas B y C (no discriminan IVA)'},
+  {k:'nograv', t:'No gravado', m:1},
+  {k:'exento', t:'Exento', m:1},
+  {k:'perIVA', t:'Perc. IVA', m:1},
+  {k:'perNac', t:'Perc. otros nac.', m:1},
+  {k:'perIIBB', t:'Perc. IIBB', m:1},
+  {k:'perMun', t:'Imp. municip.', m:1},
+  {k:'impInt', t:'Imp. internos', m:1},
+  {k:'otros', t:'Otros tributos', m:1, mas:1},
+  {k:'total', t:'Total', m:1},
+  {k:'_dif', t:'Dif.', ro:1, tip:'Total menos la suma de los importes'},
+  {k:'cfc', t:'Créd. fiscal', ro:1, tip:'Crédito fiscal computable (suma del IVA). Se puede fijar a mano en el detalle.'},
+  {k:'codOp', t:'Op.', w:'w-s', tipo:'op', tip:'Código de operación ARCA (auto: N si hay no gravado, E si es todo exento)'},
+];
+const colsVisibles = () => COLS.filter(c => !c.mas || $('#chkMas').checked);
+
+// ---------- Persistencia ----------
+function guardarLocal(){
+  try { localStorage.setItem(LS, JSON.stringify(estado)); $('#saved').textContent = 'Guardado en esta PC ' + new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ $('#saved').textContent = 'No se pudo guardar automáticamente: usá "Guardar trabajo"'; }
+}
+function cargarLocal(){
+  try { const s = localStorage.getItem(LS); if (s) { const o = JSON.parse(s); if (o && Array.isArray(o.filas)) estado = o; } } catch(e){}
+}
+function snapshot(){ undo.push(JSON.stringify(estado)); if (undo.length > 60) undo.shift(); $('#bDeshacer').disabled = false; }
+function deshacer(){ if (!undo.length) return; estado = JSON.parse(undo.pop()); $('#bDeshacer').disabled = !undo.length; $('#periodo').value = estado.periodo||''; render(); guardarLocal(); toast('Cambio deshecho'); }
+
+// ---------- Helpers ----------
+function toast(msg, ms){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('on'), ms||2600); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function periodoMasComun(filas){
+  const c = {}; filas.forEach(f => { const p = (f.fecha||'').slice(0,7); if (p) c[p] = (c[p]||0)+1; });
+  return Object.keys(c).sort((a,b)=>c[b]-c[a])[0] || '';
+}
+function val(f){ return C.validar(f, estado.periodo); }
+function nivel(f){
+  if (!f.incluir) return 'off';
+  const v = val(f);
+  if (v.err.length) return 'err';
+  if (v.av.some(a => !a.startsWith('Fecha fuera'))) return 'warn';
+  return 'ok';
+}
+function dif(f){ return C.r2(f.total - C.sumaComponentes(f)); }
+function fila(id){ return estado.filas.find(f => f.id === id); }
+
+// ---------- Filtro / orden ----------
+function filtradas(){
+  const q = $('#q').value.trim().toLowerCase();
+  const ft = $('#fTipo').value, fe = $('#fEstado').value;
+  let r = estado.filas.filter(f => {
+    if (q && !(f.nombre.toLowerCase().includes(q) || f.cuit.includes(q.replace(/\D/g,'')||'§') || String(f.nro).includes(q))) return false;
+    if (ft && f.tipo !== ft) return false;
+    if (fe === 'off' && f.incluir) return false;
+    if (fe === 'prob' && !['warn','err'].includes(nivel(f))) return false;
+    if (fe === 'err' && nivel(f) !== 'err') return false;
+    if (fe === 'fuera' && (f.fecha||'').slice(0,7) === estado.periodo) return false;
+    if (fe === 'mod' && !(f.cambios && Object.keys(f.cambios).length) && f.origen !== 'manual') return false;
+    return true;
+  });
+  if (orden.col){
+    const k = orden.col, d = orden.dir;
+    const g = (f) => k === '_dif' ? dif(f) : k === 'cfc' ? C.creditoFiscal(f) : f[k];
+    r = r.slice().sort((a,b) => { const x=g(a), y=g(b); return (x>y?1:x<y?-1:0)*d; });
+  }
+  return r;
+}
+
+// ---------- Render ----------
+function render(){
+  const hay = estado.filas.length > 0;
+  $('#empty').hidden = hay; $('#empty').style.display = hay ? 'none' : '';
+  $('#wrap').hidden = !hay; $('#cards').style.display = hay ? '' : 'none'; $('#tools').style.display = hay ? '' : 'none';
+  if (!hay){ $('#detalle').classList.remove('on'); return; }
+  // tipos en filtro
+  const tipos = [...new Set(estado.filas.map(f=>f.tipo))].sort();
+  const sel = $('#fTipo'), cur = sel.value;
+  sel.innerHTML = '<option value="">Todos los tipos</option>' + tipos.map(t => `<option value="${t}">${t} · ${esc(C.NOMBRES_TIPO[t]||'¿?')}</option>`).join('');
+  sel.value = tipos.includes(cur) ? cur : '';
+  renderCards(); renderTabla(); renderDetalle();
+}
+
+function renderCards(){
+  const inc = estado.filas.filter(f => f.incluir);
+  const s = (k) => C.r2(inc.reduce((a,f)=>a+(f[k]||0),0));
+  const sgn = (f) => ['003','008','013','021','053'].includes(f.tipo) ? -1 : 1;
+  const ss = (fn) => C.r2(inc.reduce((a,f)=>a+sgn(f)*fn(f),0));
+  const nErr = estado.filas.filter(f => nivel(f)==='err').length;
+  const nWarn = estado.filas.filter(f => nivel(f)==='warn').length;
+  const nOff = estado.filas.length - inc.length;
+  $('#cards').innerHTML = `
+    <div class="card"><div class="k">Comprobantes</div><div class="v">${inc.length}</div></div>
+    <div class="card clk" data-f="off"><div class="k">Excluidos</div><div class="v">${nOff}</div></div>
+    <div class="card"><div class="k">Neto gravado (FC − NC)</div><div class="v">$ ${fmt.format(ss(C.netoGravado))}</div></div>
+    <div class="card"><div class="k">Crédito fiscal (FC − NC)</div><div class="v">$ ${fmt.format(ss(C.creditoFiscal))}</div></div>
+    <div class="card"><div class="k">Perc. IVA</div><div class="v">$ ${fmt.format(ss(f=>f.perIVA))}</div></div>
+    <div class="card"><div class="k">Perc. IIBB</div><div class="v">$ ${fmt.format(ss(f=>f.perIIBB))}</div></div>
+    <div class="card clk ${nErr?'err':''}" data-f="err"><div class="k">Errores</div><div class="v">${nErr}</div></div>
+    <div class="card clk ${nWarn?'warn':''}" data-f="prob"><div class="k">Avisos</div><div class="v">${nWarn}</div></div>`;
+  void s;
+}
+
+function celda(f, c){
+  const chg = f.cambios && f.cambios[c.k] !== undefined ? ' chg' : '';
+  if (c.k === '_dif'){ const d = dif(f); return `<td class="dif ${Math.abs(d)>0.05?'bad':''}">${d?fmt.format(d):''}</td>`; }
+  if (c.k === 'cfc'){ const v = C.creditoFiscal(f); return `<td class="ro${f.cfcManual!=null?' chg':''}">${money(v)}</td>`; }
+  if (c.tipo === 'tipo'){
+    const opts = Object.keys(C.NOMBRES_TIPO).sort().map(t => `<option value="${t}"${t===f.tipo?' selected':''}>${t} ${esc(C.NOMBRES_TIPO[t])}</option>`).join('');
+    return `<td class="${c.w}${chg}"><select data-k="tipo">${f.tipo && !C.NOMBRES_TIPO[f.tipo] ? `<option selected>${esc(f.tipo)}</option>`:''}${!f.tipo?'<option value="" selected>¿?</option>':''}${opts}</select></td>`;
+  }
+  if (c.tipo === 'op'){
+    const o = [['auto','auto'],['-','(vacío)'],['N','N'],['E','E'],['Z','Z'],['X','X'],['A','A'],['C','C']];
+    return `<td class="${c.w}${chg}"><select data-k="codOp" title="Se exporta: '${C.codigoOperacion(f)}'">${o.map(([v,t])=>`<option value="${v}"${v===f.codOp?' selected':''}>${t}</option>`).join('')}</select></td>`;
+  }
+  if (c.tipo === 'fecha') return `<td class="${c.w}${chg}"><input data-k="fecha" value="${f.fecha?f.fecha.split('-').reverse().join('/'):''}" placeholder="dd/mm/aaaa"></td>`;
+  if (c.m) return `<td class="num${chg}"><input class="w-n" data-k="${c.k}" value="${money(f[c.k])}"></td>`;
+  if (c.tipo === 'int') return `<td class="num ${c.w}${chg}"><input data-k="${c.k}" value="${f[c.k]||''}"></td>`;
+  return `<td class="${c.w} ${c.cls||''}${chg}"><input data-k="${c.k}" value="${esc(f[c.k])}"></td>`;
+}
+
+function renderTabla(){
+  const cols = colsVisibles();
+  const rows = filtradas();
+  const th = cols.map(c => `<th class="${c.m||c.ro?'num':''} ${c.g||''}" data-c="${c.k}" title="${esc(c.tip||'')}">${c.t}${orden.col===c.k?`<span class="ar">${orden.dir>0?'▲':'▼'}</span>`:''}</th>`).join('');
+  $('#tbl thead').innerHTML = `<tr><th class="c-sel" title="Incluir en el TXT">✓</th><th title="Estado"></th>${th}<th></th></tr>`;
+  const body = rows.map(f => {
+    const n = nivel(f);
+    return `<tr data-id="${f.id}" class="${f.incluir?'':'off'} ${f.id===selId?'sel':''}">
+      <td class="c-sel"><input type="checkbox" data-k="incluir"${f.incluir?' checked':''}></td>
+      <td class="c-st" title="${esc(tituloEstado(f))}\n(clic para ver el detalle)"><span class="dot ${n==='ok'?'':n}"></span></td>
+      ${cols.map(c => celda(f,c)).join('')}
+      <td class="act"><button data-a="dup" title="Duplicar">⧉</button><button data-a="del" title="Eliminar">✕</button></td></tr>`;
+  }).join('');
+  $('#tbl tbody').innerHTML = body;
+  // totales (de las filas visibles e incluidas)
+  const inc = rows.filter(f => f.incluir);
+  const tot = cols.map(c => {
+    if (c.m) return `<td>${money(C.r2(inc.reduce((a,f)=>a+(f[c.k]||0),0)))}</td>`;
+    if (c.k==='cfc') return `<td>${money(C.r2(inc.reduce((a,f)=>a+C.creditoFiscal(f),0)))}</td>`;
+    return '<td></td>';
+  });
+  tot[0] = `<td style="text-align:left">Totales (${inc.length})</td>`;
+  $('#tbl tfoot').innerHTML = `<tr><td class="c-sel"></td><td></td>${tot.join('')}<td></td></tr>`;
+  $('#cnt').textContent = `${rows.length} de ${estado.filas.length} filas`;
+}
+
+function tituloEstado(f){
+  const v = val(f); const m = [...v.err, ...v.av];
+  if (!f.incluir) m.unshift('EXCLUIDO del TXT');
+  if (f.nota) m.push(f.nota);
+  return m.join('\n') || 'OK';
+}
+
+function renderDetalle(){
+  const d = $('#detalle'); const f = selId && fila(selId);
+  if (!f){ d.classList.remove('on'); return; }
+  const v = val(f);
+  const msgs = [...v.err.map(x=>`<div class="e">✕ ${esc(x)}</div>`), ...v.av.map(x=>`<div class="w">⚠ ${esc(x)}</div>`)];
+  if (!f.incluir) msgs.unshift('<div class="i">Excluido: no va al TXT. Tildá la casilla ✓ para incluirlo.</div>');
+  if (f.nota) msgs.push(`<div class="i">${esc(f.nota)}</div>`);
+  if (f.cambios && Object.keys(f.cambios).length) msgs.push(`<div class="i">Modificado a mano: ${Object.entries(f.cambios).map(([k,o])=>`${esc(k)} (antes ${esc(typeof o==='number'?fmt.format(o):o)})`).join(', ')}</div>`);
+  const alis = C.alicuotasDe(f);
+  const g = C.generarTXT([{...f, incluir:true}]);
+  const orig = f.tiempo ? `TIEMPO: ${esc(f.tiempo.tc)} ${esc(f.tiempo.clase)} · cuenta ${esc(f.tiempo.cuenta)}` : (f.origen==='txt'?'Leído de TXT ARCA':'Cargado a mano');
+  d.innerHTML = `
+    <div class="row2">
+      <div style="flex:1">
+        <h3>${esc(f.nombre||'(sin nombre)')} · ${esc(C.NOMBRES_TIPO[f.tipo]||f.tipo)} ${String(f.pv).padStart(5,'0')}-${String(f.nro).padStart(8,'0')}</h3>
+        <div class="hint">${orig}</div>
+        <div class="msgs">${msgs.join('') || '<div class="i">Sin observaciones.</div>'}</div>
+        <div class="grp" style="margin-top:8px">
+          ${Math.abs(dif(f))>0.004?`<button class="btn sm" data-a="ajTotal">Ajustar total a la suma (${fmt.format(C.sumaComponentes(f))})</button>`:''}
+          ${C.CON_ALICUOTAS.has(f.tipo)?`<button class="btn sm" data-a="repartir" title="Vuelve a separar el neto total entre alícuotas a partir del IVA de cada una">Repartir neto según IVA</button>`:''}
+          <label class="hint">Crédito fiscal computable: <input id="cfcIn" style="width:120px;border:1px solid var(--line);border-radius:5px;padding:3px 6px;text-align:right" value="${f.cfcManual!=null?fmt.format(f.cfcManual):''}" placeholder="auto ${fmt.format(C.ivaTotal(f))}"></label>
+          <button class="btn sm" data-a="cerrar">Cerrar</button>
+        </div>
+      </div>
+      <div>
+        <h3>Alícuotas que se informan</h3>
+        ${alis.length?`<table class="mini"><tr><th>Código</th><th>Neto</th><th>IVA</th></tr>${alis.map(a=>`<tr><td>${a.cod}</td><td class="n">${fmt.format(a.neto)}</td><td class="n">${fmt.format(a.iva)}</td></tr>`).join('')}</table>`:'<div class="hint">No lleva (comprobante B / C).</div>'}
+      </div>
+    </div>
+    <h3 style="margin-top:10px">Líneas que van al TXT</h3>
+    <pre>${esc(g.cbte.trim())}${g.alicuotas?'\n'+esc(g.alicuotas.trim()):''}</pre>`;
+  d.classList.add('on');
+}
+
+// ---------- Edición ----------
+function setCampo(f, k, raw){
+  let v;
+  const c = COLS.find(x => x.k === k);
+  if (k === 'incluir') v = !!raw;
+  else if (k === 'fecha'){ v = C.fechaISO(raw); if (!v){ toast('Fecha inválida. Usá dd/mm/aaaa'); return false; } }
+  else if (k === 'cuit') v = String(raw).replace(/\D/g,'');
+  else if (k === 'pv' || k === 'nro') v = parseInt(String(raw).replace(/\D/g,'')||'0',10);
+  else if (c && c.m){ v = parseNum(raw); if (v === null){ toast('Importe inválido'); return false; } }
+  else v = String(raw);
+  if (f[k] === v) return false;
+  snapshot();
+  if (f.origen !== 'manual' && k !== 'incluir'){ f.cambios = f.cambios || {}; if (!(k in f.cambios)) f.cambios[k] = f[k]; }
+  f[k] = v;
+  return true;
+}
+
+function bindTabla(){
+  const tb = $('#tbl tbody');
+  tb.addEventListener('change', (e) => {
+    const tr = e.target.closest('tr'); if (!tr) return;
+    const f = fila(tr.dataset.id); const k = e.target.dataset.k; if (!f || !k) return;
+    const raw = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    if (setCampo(f, k, raw)){ guardarLocal(); refrescarFila(tr, f); renderCards(); if (selId===f.id) renderDetalle(); actualizarFooter(); }
+    else refrescarFila(tr, f);
+  });
+  tb.addEventListener('focusin', (e) => {
+    const tr = e.target.closest('tr'); if (!tr) return;
+    if (e.target.matches('td.num input') && e.target.dataset.k && COLS.find(c=>c.k===e.target.dataset.k&&c.m)){
+      const f = fila(tr.dataset.id); e.target.value = f[e.target.dataset.k] ? String(f[e.target.dataset.k]).replace('.',',') : ''; e.target.select();
+    }
+    seleccionar(tr.dataset.id, false);
+  });
+  tb.addEventListener('focusout', (e) => {
+    const tr = e.target.closest('tr'); if (!tr) return;
+    if (e.target.matches('td.num input')){ const f = fila(tr.dataset.id); const k = e.target.dataset.k; const c = COLS.find(x=>x.k===k); if (f && c && c.m) e.target.value = money(f[k]); }
+  });
+  tb.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches('input')){
+      e.preventDefault(); e.target.blur();
+      const td = e.target.closest('td'), tr = td.parentElement, i = [...tr.children].indexOf(td);
+      const nx = (e.shiftKey ? tr.previousElementSibling : tr.nextElementSibling);
+      const inp = nx && nx.children[i] && nx.children[i].querySelector('input,select'); if (inp) inp.focus();
+    }
+    if (e.key === 'Escape' && e.target.matches('input')){ const tr=e.target.closest('tr'); refrescarFila(tr, fila(tr.dataset.id)); e.target.blur(); }
+  });
+  tb.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr'); if (!tr) return;
+    const a = e.target.closest('button') && e.target.closest('button').dataset.a;
+    const f = fila(tr.dataset.id);
+    if (a === 'del'){ preguntar(`¿Eliminar ${f.nombre} ${f.pv}-${f.nro}?`, [['no','Cancelar'],['si','Eliminar']]).then(r => { if (r !== 'si') return; snapshot(); estado.filas = estado.filas.filter(x=>x!==f); if (selId===f.id) selId=null; guardarLocal(); render(); toast('Comprobante eliminado (se puede deshacer)'); }); return; }
+    if (a === 'dup'){ snapshot(); const n = JSON.parse(JSON.stringify(f)); n.id = C.filaVacia().id; n.origen='manual'; delete n.cambios; estado.filas.splice(estado.filas.indexOf(f)+1,0,n); selId=n.id; guardarLocal(); render(); toast('Duplicado: cambiá el número'); return; }
+    if (e.target.closest('td.c-st')) seleccionar(f.id, false);
+  });
+  $('#tbl thead').addEventListener('click', (e) => {
+    const th = e.target.closest('th[data-c]'); if (!th) return;
+    const k = th.dataset.c; orden = orden.col === k ? (orden.dir>0?{col:k,dir:-1}:{col:null,dir:1}) : {col:k,dir:1}; renderTabla();
+  });
+}
+function refrescarFila(tr, f){
+  const tmp = document.createElement('tbody');
+  const cols = colsVisibles(), n = nivel(f);
+  tmp.innerHTML = `<tr data-id="${f.id}" class="${f.incluir?'':'off'} ${f.id===selId?'sel':''}"><td class="c-sel"><input type="checkbox" data-k="incluir"${f.incluir?' checked':''}></td><td class="c-st" title="${esc(tituloEstado(f))}\n(clic para ver el detalle)"><span class="dot ${n==='ok'?'':n}"></span></td>${cols.map(c=>celda(f,c)).join('')}<td class="act"><button data-a="dup" title="Duplicar">⧉</button><button data-a="del" title="Eliminar">✕</button></td></tr>`;
+  const nuevo = tmp.firstElementChild;
+  const act = document.activeElement, ai = act && tr.contains(act) ? [...tr.querySelectorAll('input,select')].indexOf(act) : -1;
+  tr.replaceWith(nuevo);
+  if (ai >= 0){ const el = nuevo.querySelectorAll('input,select')[ai]; if (el) el.focus(); }
+}
+function actualizarFooter(){ /* recalcula totales sin perder foco */
+  const rows = filtradas(), cols = colsVisibles(), inc = rows.filter(f=>f.incluir);
+  const tds = $('#tbl tfoot tr').children;
+  cols.forEach((c,i) => {
+    const td = tds[i+2]; if (!td) return;
+    if (c.m) td.textContent = money(C.r2(inc.reduce((a,f)=>a+(f[c.k]||0),0)));
+    if (c.k==='cfc') td.textContent = money(C.r2(inc.reduce((a,f)=>a+C.creditoFiscal(f),0)));
+  });
+  tds[2].textContent = `Totales (${inc.length})`;
+}
+function seleccionar(id, toggle){
+  if (toggle && selId === id) selId = null; else selId = id;
+  document.querySelectorAll('#tbl tbody tr.sel').forEach(r => r.classList.remove('sel'));
+  if (selId){ const tr = document.querySelector(`#tbl tbody tr[data-id="${selId}"]`); if (tr) tr.classList.add('sel'); }
+  renderDetalle();
+}
+$('#detalle').addEventListener('click', (e) => {
+  const a = e.target.dataset.a; const f = selId && fila(selId); if (!a || !f) return;
+  if (a === 'cerrar'){ seleccionar(null); return; }
+  snapshot();
+  if (a === 'ajTotal'){ f.cambios = f.cambios||{}; if (!('total' in f.cambios)) f.cambios.total = f.total; f.total = C.sumaComponentes(f); }
+  if (a === 'repartir'){ const neto = C.netoGravado(f); C.repartirNeto(f, neto); }
+  guardarLocal(); render();
+});
+$('#detalle').addEventListener('change', (e) => {
+  if (e.target.id !== 'cfcIn') return; const f = fila(selId); if (!f) return;
+  const t = e.target.value.trim(); snapshot();
+  if (!t) f.cfcManual = null; else { const n = parseNum(t); if (n === null){ toast('Importe inválido'); return; } f.cfcManual = n; }
+  guardarLocal(); render();
+});
+
+// ---------- Archivos ----------
+function leerArchivo(file, comoTexto){
+  return new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = mal; comoTexto ? r.readAsText(file, 'ISO-8859-1') : r.readAsArrayBuffer(file); });
+}
+async function abrirExcel(file){
+  try{
+    let filas;
+    if (/\.csv$/i.test(file.name)) filas = C.leerCSV(await leerArchivo(file, true));
+    else filas = C.leerBIFF(await leerArchivo(file));
+    const nuevas = C.desdeTiempo(filas);
+    incorporar(nuevas, file.name);
+  } catch(err){ preguntar('No pude leer el Excel.\n' + err.message, [['ok','Entendido']]); }
+}
+async function abrirTXT(files){
+  let cb = null, al = null;
+  for (const f of files){
+    const t = await leerArchivo(f, true); const l = t.split(/\r?\n/).find(x=>x.trim());
+    if (!l) continue;
+    if (l.length >= 300) cb = t; else if (l.length >= 80) al = t;
+  }
+  if (!cb){ preguntar('Elegí el TXT de comprobantes (líneas de 325 caracteres). Podés elegir los dos archivos juntos.', [['ok','Entendido']]); return; }
+  if (!al && await preguntar('No elegiste el TXT de alícuotas. Sin él no se conocen los netos e IVA de cada comprobante.', [['no','Cancelar'],['si','Seguir igual']]) !== 'si') return;
+  incorporar(C.desdeTXT(cb, al || ''), 'TXT ARCA');
+}
+async function incorporar(nuevas, nombre){
+  if (!nuevas.length){ toast('El archivo no tiene comprobantes'); return; }
+  let modo = 'reemplazar';
+  if (estado.filas.length){
+    modo = await preguntar(`Ya hay ${estado.filas.length} comprobantes cargados. ¿Qué hago con el archivo nuevo?`, [['','Cancelar'],['agregar','Agregar al final'],['reemplazar','Reemplazar todo']]);
+    if (!modo) return;
+  }
+  snapshot();
+  if (modo === 'reemplazar'){ estado.filas = nuevas; estado.periodo = periodoMasComun(nuevas); estado.archivo = nombre; selId = null; }
+  else {
+    const clave = f => [f.tipo,f.pv,f.nro,f.cuit].join('|');
+    const ya = new Set(estado.filas.map(clave)); let rep = 0;
+    nuevas.forEach(f => { if (ya.has(clave(f))) rep++; estado.filas.push(f); });
+    if (rep) toast(`Atención: ${rep} comprobantes ya estaban cargados (quedan duplicados, revisá)`, 5000);
+  }
+  $('#periodo').value = estado.periodo;
+  guardarLocal(); render();
+  const exc = nuevas.filter(f=>!f.incluir).length;
+  toast(`${nuevas.length} comprobantes leídos de ${nombre}` + (exc?` · ${exc} excluidos automáticamente (importaciones)`:''), 4500);
+}
+
+// En claude.ai las descargas pasan por el permiso de la página; abierto como archivo, por un link normal
+let _dl;
+async function descargar(nombre, contenido, tipo){
+  if (window.claude && window.claude.use){
+    if (_dl === undefined){ try { _dl = await window.claude.use('downloads'); } catch(e){ _dl = null; } }
+    if (!_dl){ toast('Las descargas no están disponibles en esta vista'); return false; }
+    try { await _dl.save({filename:nombre, data:contenido}); return true; }
+    catch(e){ if (e && e.code !== 'declined') toast('No se pudo descargar ' + nombre + (e && e.message ? ': ' + e.message : '')); return false; }
+  }
+  const blob = contenido instanceof Uint8Array ? new Blob([contenido], {type:tipo||'text/plain'}) : new Blob([contenido], {type:tipo||'text/plain;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  return true;
+}
+
+function preguntar(msg, botones){
+  return new Promise((ok) => {
+    const d = $('#dlg2');
+    d.innerHTML = `<p class="msg">${esc(msg)}</p><div class="foot">${botones.map(([v,t],i)=>`<button class="btn${i===botones.length-1?' pri':''}" data-v="${v}">${esc(t)}</button>`).join('')}</div>`;
+    d.onclick = (e) => { const b = e.target.closest('button[data-v]'); if (!b) return; d.close(); ok(b.dataset.v); };
+    d.oncancel = () => ok(botones[0][0]);
+    d.showModal();
+  });
+}
+
+function dialogoGenerar(){
+  if (!estado.filas.length){ toast('No hay comprobantes'); return; }
+  const inc = estado.filas.filter(f=>f.incluir);
+  const errs = inc.filter(f => val(f).err.length);
+  const g = C.generarTXT(estado.filas);
+  const porTipo = {};
+  inc.forEach(f => { const t = porTipo[f.tipo] = porTipo[f.tipo] || {n:0,neto:0,iva:0,total:0}; t.n++; t.neto+=C.netoGravado(f); t.iva+=C.creditoFiscal(f); t.total+=f.total; });
+  const porAli = {};
+  inc.forEach(f => C.alicuotasDe(f).forEach(a => { const s = ['003','008','013'].includes(f.tipo)?-1:1; const t = porAli[a.cod] = porAli[a.cod]||{neto:0,iva:0}; t.neto+=s*a.neto; t.iva+=s*a.iva; }));
+  const nomAli = {'0003':'0%','0004':'10,5%','0005':'21%','0006':'27%','0008':'5%','0009':'2,5%'};
+  const per = (estado.periodo||'').replace('-','');
+  const dlg = $('#dlg');
+  dlg.innerHTML = `
+    <h2>Generar TXT para ARCA ${estado.periodo?`· período ${estado.periodo.split('-').reverse().join('/')}`:''}</h2>
+    ${errs.length?`<div style="background:var(--err-bg);color:var(--err);padding:8px 10px;border-radius:6px;margin-bottom:8px"><b>${errs.length} comprobantes con errores</b> (ARCA probablemente los rechace):<ul>${errs.slice(0,30).map(f=>`<li>${esc(f.nombre)} ${f.pv}-${f.nro}: ${esc(val(f).err.join('; '))}</li>`).join('')}</ul></div>`:''}
+    <table><tr><th>Tipo</th><th class="n">Cant.</th><th class="n">Neto gravado</th><th class="n">IVA / Créd. fiscal</th><th class="n">Total</th></tr>
+    ${Object.keys(porTipo).sort().map(t=>`<tr><td>${t} ${esc(C.NOMBRES_TIPO[t]||'')}</td><td class="n">${porTipo[t].n}</td><td class="n">${fmt.format(porTipo[t].neto)}</td><td class="n">${fmt.format(porTipo[t].iva)}</td><td class="n">${fmt.format(porTipo[t].total)}</td></tr>`).join('')}
+    </table>
+    <h3 style="font-size:13px;margin:14px 0 4px">Por alícuota (FC − NC)</h3>
+    <table><tr><th>Alícuota</th><th class="n">Neto</th><th class="n">IVA</th></tr>
+    ${Object.keys(porAli).sort().map(k=>`<tr><td>${k} · ${nomAli[k]||''}</td><td class="n">${fmt.format(porAli[k].neto)}</td><td class="n">${fmt.format(porAli[k].iva)}</td></tr>`).join('')}
+    </table>
+    <p class="hint">Se generan 2 archivos: comprobantes (${g.cantidad} líneas) y alícuotas (${g.alicuotas.split('\r\n').filter(Boolean).length} líneas), en formato ISO-8859-1 con fin de línea Windows, como los acepta ARCA.</p>
+    <div class="foot"><button class="btn" data-x="no">Cancelar</button><button class="btn pri" data-x="si">Descargar los 2 TXT</button></div>`;
+  dlg.onclick = async (e) => {
+    const x = e.target.dataset.x; if (!x) return;
+    dlg.close();
+    if (x === 'si'){
+      const a = await descargar(`libro_iva_digital_compras_cbte${per?'_'+per:''}.txt`, C.aLatin1(g.cbte), 'text/plain');
+      if (!a) return;
+      await new Promise(r => setTimeout(r, 400));
+      const b = await descargar(`libro_iva_digital_compras_alicuotas${per?'_'+per:''}.txt`, C.aLatin1(g.alicuotas), 'text/plain');
+      toast(b ? 'Los 2 TXT quedaron en la carpeta Descargas.' : 'Falta descargar el TXT de alícuotas: volvé a tocar Generar.');
+    }
+  };
+  dlg.showModal();
+}
+
+function exportarCSV(){
+  const cols = COLS.filter(c => !c.ro || c.k==='cfc');
+  const head = ['Incluir','Estado', ...cols.map(c=>c.t), 'Observaciones'];
+  const n = (v) => (v||0).toFixed(2).replace('.',',');
+  const lines = [head.join(';')];
+  estado.filas.forEach(f => {
+    const v = val(f);
+    lines.push([f.incluir?'SI':'NO', nivel(f), ...cols.map(c => c.k==='fecha'?f.fecha.split('-').reverse().join('/') : c.k==='cfc'?n(C.creditoFiscal(f)) : c.m?n(f[c.k]) : c.k==='codOp'?C.codigoOperacion(f).trim() : c.k==='tipo'?`${f.tipo} ${C.NOMBRES_TIPO[f.tipo]||''}` : String(f[c.k]).replace(/;/g,',')), [...v.err,...v.av,f.nota||''].filter(Boolean).join(' | ').replace(/;/g,',')].join(';'));
+  });
+  descargar(`iva_compras_${(estado.periodo||'').replace('-','')}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+}
+
+function agregar(){
+  snapshot();
+  const f = C.filaVacia();
+  f.fecha = estado.periodo ? estado.periodo + '-01' : new Date().toISOString().slice(0,10);
+  estado.filas.unshift(f); selId = f.id;
+  $('#q').value=''; $('#fTipo').value=''; $('#fEstado').value=''; orden={col:null,dir:1};
+  guardarLocal(); render();
+  const inp = document.querySelector(`#tbl tbody tr[data-id="${f.id}"] input[data-k="pv"]`); if (inp) inp.focus();
+}
+
+// ---------- Eventos generales ----------
+$('#bAbrir').onclick = $('#bAbrir2').onclick = () => $('#fExcel').click();
+$('#bTxt').onclick = $('#bTxt2').onclick = () => $('#fTxt').click();
+$('#fExcel').onchange = (e) => { if (e.target.files[0]) abrirExcel(e.target.files[0]); e.target.value=''; };
+$('#fTxt').onchange = (e) => { if (e.target.files.length) abrirTXT([...e.target.files]); e.target.value=''; };
+$('#bAgregar').onclick = agregar;
+$('#bDeshacer').onclick = deshacer;
+$('#bGenerar').onclick = dialogoGenerar;
+$('#bCsv').onclick = () => estado.filas.length ? exportarCSV() : toast('No hay datos');
+$('#bGuardar').onclick = () => { if (!estado.filas.length) return toast('No hay datos'); descargar(`trabajo_iva_compras_${(estado.periodo||'').replace('-','')}.json`, JSON.stringify(estado), 'application/json'); };
+$('#bCargar').onclick = () => $('#fJson').click();
+$('#fJson').onchange = async (e) => {
+  const file = e.target.files[0]; e.target.value=''; if (!file) return;
+  try { const o = JSON.parse(await leerArchivo(file, true)); if (!o || !Array.isArray(o.filas)) throw new Error('formato'); snapshot(); estado = o; selId=null; $('#periodo').value = estado.periodo||''; guardarLocal(); render(); toast('Trabajo abierto: ' + file.name); }
+  catch(err){ preguntar('Ese archivo no es un trabajo guardado por esta aplicación.', [['ok','Entendido']]); }
+};
+$('#bLimpiar').onclick = async () => { if (await preguntar('¿Vaciar todos los comprobantes? Se puede deshacer.', [['no','Cancelar'],['si','Vaciar']]) !== 'si') return; snapshot(); estado = {periodo:'',filas:[],archivo:''}; selId=null; $('#periodo').value=''; guardarLocal(); render(); };
+$('#periodo').onchange = (e) => { estado.periodo = e.target.value; guardarLocal(); render(); };
+['#q','#fTipo','#fEstado'].forEach(s => $(s).addEventListener('input', () => renderTabla()));
+$('#chkMas').onchange = () => renderTabla();
+$('#cards').addEventListener('click', (e) => { const c = e.target.closest('.card.clk'); if (!c) return; $('#fEstado').value = $('#fEstado').value===c.dataset.f ? '' : c.dataset.f; renderTabla(); });
+document.addEventListener('keydown', (e) => { if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z' && !e.target.matches('input,select')){ e.preventDefault(); deshacer(); } });
+
+// arrastrar y soltar
+const drop = $('#drop');
+['dragenter','dragover'].forEach(ev => document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('on'); }));
+['dragleave','drop'].forEach(ev => document.addEventListener(ev, (e) => { e.preventDefault(); if (ev==='drop' || !e.relatedTarget) drop.classList.remove('on'); }));
+document.addEventListener('drop', (e) => {
+  const fs = [...(e.dataTransfer && e.dataTransfer.files || [])]; if (!fs.length) return;
+  const txt = fs.filter(f=>/\.txt$/i.test(f.name)), xl = fs.find(f=>/\.(xls|csv)$/i.test(f.name)), js = fs.find(f=>/\.json$/i.test(f.name));
+  if (xl) abrirExcel(xl); else if (txt.length) abrirTXT(txt); else if (js){ const dt = new DataTransfer(); dt.items.add(js); $('#fJson').files = dt.files; $('#fJson').onchange({target:$('#fJson')}); }
+  else toast('Arrastrá un .XLS de TIEMPO, los .TXT de ARCA o un trabajo .json');
+});
+
+// inicio
+cargarLocal();
+$('#periodo').value = estado.periodo || '';
+bindTabla();
+render();
+if (estado.filas.length) $('#saved').textContent = 'Trabajo recuperado de esta PC';
+})();
+</script>
+</body>
+</html>
